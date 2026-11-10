@@ -1,0 +1,6 @@
+{
+  "name": "BMSIT College Canteen Pre-Order System",
+  "description": "Smart pre-ordering, time-slotted pickup scheduling, digital token queue, kitchen display system, and admin analytics for BMSIT Campus Canteen.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

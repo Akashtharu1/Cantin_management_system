@@ -1,0 +1,175 @@
+// Prisma Schema for College Canteen Pre-Order System (PostgreSQL)
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  STUDENT
+  FACULTY
+  KITCHEN
+  ADMIN
+}
+
+enum FoodType {
+  VEG
+  NON_VEG
+}
+
+enum FoodCategory {
+  Breakfast
+  Lunch
+  Snacks
+  Beverages
+  Specials
+}
+
+enum OrderStatus {
+  RECEIVED
+  PREPARING
+  READY
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+enum PaymentGateway {
+  UPI_QR
+  RAZORPAY_SANDBOX
+}
+
+enum InventoryChangeType {
+  RESTOCK
+  DEDUCTION
+  ADJUSTMENT
+}
+
+model User {
+  id           String    @id @default(uuid())
+  fullName     String
+  email        String    @unique
+  passwordHash String?
+  phoneNumber  String?
+  role         Role      @default(STUDENT)
+  department   String?
+  orders       Order[]
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([email])
+  @@index([role])
+}
+
+model MenuItem {
+  id              String         @id @default(uuid())
+  name            String
+  description     String
+  price           Float
+  imageUrl        String
+  category        FoodCategory
+  foodType        FoodType       @default(VEG)
+  preparationTime Int            @default(10) // minutes
+  stockQuantity   Int            @default(50)
+  isAvailable     Boolean        @default(true)
+  isFeatured      Boolean        @default(false)
+  orderItems      OrderItem[]
+  inventoryLogs   InventoryLog[]
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([category])
+  @@index([isAvailable])
+}
+
+model PickupSlot {
+  id            String   @id @default(uuid())
+  startTime     String
+  endTime       String
+  displayLabel  String
+  capacity      Int      @default(30)
+  reservedCount Int      @default(0)
+  isActive      Boolean  @default(true)
+  orders        Order[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Order {
+  id              String        @id @default(uuid())
+  userId          String
+  user            User          @relation(fields: [userId], references: [id])
+  tokenNumber     String        @unique // e.g. "C101"
+  pickupSlotId    String
+  pickupSlot      PickupSlot    @relation(fields: [pickupSlotId], references: [id])
+  pickupSlotLabel String
+  subtotal        Float
+  tax             Float
+  totalAmount     Float
+  paymentStatus   PaymentStatus @default(PENDING)
+  orderStatus     OrderStatus   @default(RECEIVED)
+  paymentMethod   String        @default("UPI_QR")
+  transactionId   String?
+  customerNotes   String?
+  items           OrderItem[]
+  payments        Payment[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([tokenNumber])
+  @@index([orderStatus])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model OrderItem {
+  id         String   @id @default(uuid())
+  orderId    String
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItemId String
+  menuItem   MenuItem @relation(fields: [menuItemId], references: [id])
+  quantity   Int      @default(1)
+  unitPrice  Float
+  subtotal   Float
+  createdAt  DateTime @default(now())
+
+  @@index([orderId])
+  @@index([menuItemId])
+}
+
+model Payment {
+  id               String         @id @default(uuid())
+  orderId          String
+  order            Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  paymentGateway   PaymentGateway @default(UPI_QR)
+  transactionId    String         @unique
+  amount           Float
+  paymentStatus    PaymentStatus  @default(COMPLETED)
+  paymentReference String?
+  createdAt        DateTime       @default(now())
+
+  @@index([transactionId])
+  @@index([orderId])
+}
+
+model InventoryLog {
+  id              String              @id @default(uuid())
+  menuItemId      String
+  menuItem        MenuItem            @relation(fields: [menuItemId], references: [id])
+  changeType      InventoryChangeType
+  quantityChanged Int
+  reason          String
+  createdAt       DateTime            @default(now())
+
+  @@index([menuItemId])
+  @@index([createdAt])
+}
